@@ -6,7 +6,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import Brewery from './brewery.js';
 import { getAllBreweries, getBreweryById, getRandomBrewery, searchBreweries } from './api.js';
 //
 
@@ -47,14 +46,18 @@ app.get('/breweries/search', async (req,res) => {
         city: req.query.city,
         state: req.query.state,
         country: req.query.country,
-        postal: req.query.postal
+        postal: req.query.postal,
+        page: req.query.page,
+        per_page: req.query.per_page
     }; // <-- also from client
+
     console.log("\nSearching for breweries...")
     console.log("Query: ", query);
     if ( (filters.city === undefined) &&
          (filters.state === undefined) &&
          (filters.country === undefined) &&
-         (filters.postal === undefined) ){
+         (filters.postal === undefined) &&
+         (filters.per_page === undefined) ){
         console.log("No filters applied");
     }
     else {
