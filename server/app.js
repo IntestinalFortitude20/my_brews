@@ -1,13 +1,10 @@
-// This app.js file is the server where routes and endpoints
-// are defined for both the API and the database
-// API calls are defined in api.js
+// API calls and caching are defined in api.js
 // Database calls are defined in database.js
 
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import { getAllBreweries, getBreweryById, getRandomBrewery, searchBreweries } from './api.js';
-//
 
 // Load the environment variables from project root folder
 dotenv.config({ path: '../.env' });
@@ -21,21 +18,19 @@ app.use(express.json());
 
 
 
-
-
-// "/breweries" is the base endpoint for all the api calls
-// functions are defined in the api.js file
-// The app.js file is the server which contains the get endpoints
-
 ////////////////////////////////////////////////////////////////
 // START OF API ENDPOINTS //////////////////////////////////////
 ////////////////////////////////////////////////////////////////
+
+
+// TODO: ADD MORE MANUAL FILTERS BECAUSE
+// THE API DOESN'T PROVIDE A WAY TO DO THIS
+// ADD PAGINATION TO THE SEARCH RESULTS, TOO
 
 // HOME PAGE (root endpoint)
 app.get('/', (req,res) => {
     res.send('This should be the home page');
 });
-
 
 // SEARCH BREWERIES
 app.get('/breweries/search', async (req,res) => {
@@ -49,50 +44,65 @@ app.get('/breweries/search', async (req,res) => {
         postal: req.query.postal,
         page: req.query.page,
         per_page: req.query.per_page
-    }; // <-- also from client
+    };
 
     console.log("\nSearching for breweries...")
     console.log("Query: ", query);
-    if ( (filters.city === undefined) &&
-         (filters.state === undefined) &&
-         (filters.country === undefined) &&
-         (filters.postal === undefined) &&
-         (filters.per_page === undefined) ){
+    
+    if ( !filters.city && !filters.state && !filters.country && 
+        !filters.postal && !filters.per_page ) {
         console.log("No filters applied");
     }
     else {
         console.log("Filters: ", filters);
     }
-
-    const breweries = await searchBreweries(query, filters);
-    res.send(breweries);
+    
+    try {
+        const breweries = await searchBreweries(query, filters);     
+        return res.json(breweries);
+    }
+    catch (error) {
+        res.status(500).json({ error: '(App.js) Error searching for breweries' });
+    }
 });
+
 
 // GET RANDOM BREWERY
 app.get('/breweries/random', async (req,res) => {
     //res.send("This should be a random brewery");
-    
     const brewery = await getRandomBrewery();
-    //res.send(brewery);
+    res.json(brewery);
 });
 
 
 // GET BREWERY BY ID
 app.get('/breweries/:id', async (req,res) => {
     //res.send("This should be a specific brewery");
-    
     const id = req.params.id;
-    const brewery = await getBreweryById(id);
-    res.send(brewery);
+    
+    try {
+        const brewery = await getBreweryById(id);
+        res.json(brewery);
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 
 // GET ALL BREWERIES
 app.get('/breweries', async (req,res) => {
     //res.send("This should be a list of breweries");
-    
-    const breweries = await getAllBreweries();
-    res.send(breweries);
+    const page = parseInt(req.query.page) || 1;
+    const perPage = parseInt(req.query.per_page) || 50;
+
+    try {
+        const breweries = await getAllBreweries(page, perPage);
+        res.json(breweries);
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 
@@ -115,7 +125,6 @@ app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).send('Something broke!');
 });
-
 
 ////////////////////////////////////////////////////////////////
 
