@@ -19,6 +19,29 @@ const apiClient = axios.create({
 // Initialize cache object
 const cache = new NodeCache({stdTTL: (60*60*24) });
 
+function toBreweryModel(breweryData) {
+    return new Brewery(
+        breweryData.id,
+        breweryData.name,
+        breweryData.brewery_type,
+        breweryData.address || breweryData.street || null,
+        breweryData.city,
+        breweryData.state || breweryData.state_province || null,
+        breweryData.postal_code,
+        breweryData.country,
+        breweryData.phone || null,
+        breweryData.website || breweryData.website_url || null,
+        breweryData.longitude || null,
+        breweryData.latitude || null
+    );
+}
+
+function throwApiError(context, error) {
+    const status = error?.response?.status;
+    const details = error?.response?.data ? JSON.stringify(error.response.data) : error.message;
+    throw new Error(`${context}${status ? ` (status ${status})` : ''}: ${details}`);
+}
+
 
 // SEARCH BREWERIES
 export async function searchBreweries(query, filters={}) {
@@ -37,43 +60,21 @@ export async function searchBreweries(query, filters={}) {
     // if cache key does not exist:
     // call API, add response to cache, display results
     try {
-        
-        // Add filters to query string
-        let queryWithFilters = baseURL + `/breweries/search?query=${query}`;
-        
-        // Use key/value pairs from filters js object
-        // that was passed in as an argument.
-        // Access using Object.entries() method.
-        for (const [key, value] of Object.entries(filters)) {
-            if (value) {
-                queryWithFilters += `&${key}=${value}`;
-            }
-        }
-        
-        console.log("Searching for breweries with query: ", queryWithFilters);
+        const params = {
+            query,
+            ...filters
+        };
 
-        const response = await apiClient.get(queryWithFilters);
-        
-        const breweries = response.data.map(breweryData => new Brewery(
-            breweryData.id,
-            breweryData.name,
-            breweryData.brewery_type,
-            breweryData.address,
-            breweryData.city,
-            breweryData.state,
-            breweryData.postal_code,
-            breweryData.country,
-            breweryData.phone,
-            breweryData.website,
-            breweryData.longitude,
-            breweryData.latitude
-            )
-        );
+        console.log("Searching for breweries with params: ", params);
+
+        const response = await apiClient.get('/breweries/search', { params });
+
+        const breweries = response.data.map((breweryData) => toBreweryModel(breweryData));
         cache.set(cacheKey, breweries);
         return breweries;
     }
     catch (error) {
-        console.error(error, "\nError searching for breweries");
+        throwApiError('Error searching for breweries', error);
     }
 }
 
@@ -83,32 +84,19 @@ export async function getRandomBrewery() {
     try {
         console.log("\nGetting random brewery...");
 
-        const response = await apiClient.get(baseURL + "/breweries/random");
+        const response = await apiClient.get('/breweries/random');
         const breweryData = response.data[0];
         // ^^^ This call returns a list, because the query accepts requests
         // for multiple random breweries.  For my sake, I only want one.
         // getByID only returns one brewery, not a list.
         // Just some information for future reference.
 
-        const brewery = new Brewery(
-            breweryData.id,
-            breweryData.name,
-            breweryData.brewery_type,
-            breweryData.address,
-            breweryData.city,
-            breweryData.state,
-            breweryData.postal_code,
-            breweryData.country,
-            breweryData.phone,
-            breweryData.website,
-            breweryData.longitude,
-            breweryData.latitude
-        );
+        const brewery = toBreweryModel(breweryData);
 
         return brewery;
     }
     catch (error) {
-        console.error(error, "\nError getting random brewery");
+        throwApiError('Error getting random brewery', error);
     }
 }
 
@@ -127,28 +115,15 @@ export async function getBreweryById(id) {
     try {
         console.log("\nGetting brewery by ID: ", id);
 
-        const response = await apiClient.get(baseURL + `/breweries/${id}`);
+        const response = await apiClient.get(`/breweries/${id}`);
         const breweryData = response.data;
 
-        const brewery = new Brewery(
-            breweryData.id,
-            breweryData.name,
-            breweryData.brewery_type,
-            breweryData.address,
-            breweryData.city,
-            breweryData.state,
-            breweryData.postal_code,
-            breweryData.country,
-            breweryData.phone,
-            breweryData.website,
-            breweryData.longitude,
-            breweryData.latitude
-        );
+        const brewery = toBreweryModel(breweryData);
         cache.set(cacheKey, brewery);
         return brewery;
     }
     catch (error) {
-        console.error(error, "\nError getting brewery by ID");
+        throwApiError('Error getting brewery by ID', error);
     }
 }
 
@@ -166,27 +141,18 @@ export async function getAllBreweries(page=1, perPage=50) {
 
     try {
         console.log(`\nGetting list of breweries (page: ${page}, results per page: ${perPage})...`);
-        const response = await apiClient.get(baseURL + "/breweries/");
-        
-        const breweries = response.data.map(breweryData => new Brewery(
-            breweryData.id,
-            breweryData.name,
-            breweryData.brewery_type,
-            breweryData.address,
-            breweryData.city,
-            breweryData.state,
-            breweryData.postal_code,
-            breweryData.country,
-            breweryData.phone,
-            breweryData.website,
-            breweryData.longitude,
-            breweryData.latitude
-            )
-        );
+        const response = await apiClient.get('/breweries', {
+            params: {
+                page,
+                per_page: perPage
+            }
+        });
+
+        const breweries = response.data.map((breweryData) => toBreweryModel(breweryData));
         cache.set(cacheKey, breweries);
         return breweries;
     }
     catch (error) {
-        console.error(error, "Error getting all breweries");
+        throwApiError('Error getting all breweries', error);
     } 
 }

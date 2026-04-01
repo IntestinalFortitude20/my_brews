@@ -1,9 +1,6 @@
 // filepath: /C:/Users/pruck/source/repos/My_Brews/my_brews_client/src/App.jsx
-import React, { useState } from 'react';
 //import { Helmet } from 'react.helmet';
-import axios from 'axios';
 import './App.css';
-import KanyeButton from './components/kanyebutton';
 import SearchBar from './components/SearchBar';
 
 
@@ -20,7 +17,7 @@ const App = () => {
         <ul>
           <li>Home</li>
           <li>About</li>
-          <li>I'm feeling lucky</li>
+          <li>I&apos;m feeling lucky</li>
           <li></li>
           <li></li>
         </ul>

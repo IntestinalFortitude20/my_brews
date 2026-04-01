@@ -5,6 +5,14 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import { getAllBreweries, getBreweryById, getRandomBrewery, searchBreweries } from './api.js';
+import {
+    ensureSchema,
+    getAllBreweriesFromDb,
+    getBreweryByIdFromDb,
+    getRandomBreweryFromDb,
+    searchBreweriesInDb,
+    upsertBreweries
+} from './database.js';
 
 // Load the environment variables from project root folder
 dotenv.config({ path: '../.env' });
@@ -58,20 +66,40 @@ app.get('/breweries/search', async (req,res) => {
     }
     
     try {
-        const breweries = await searchBreweries(query, filters);     
+        const localResults = await searchBreweriesInDb(query, filters);
+        if (localResults.length > 0) {
+            res.set('X-Data-Source', 'database');
+            return res.json(localResults);
+        }
+
+        const breweries = await searchBreweries(query, filters);
+        await upsertBreweries(breweries);
+        res.set('X-Data-Source', 'openbrewery');
         return res.json(breweries);
     }
     catch (error) {
-        res.status(500).json({ error: '(App.js) Error searching for breweries' });
+        res.status(500).json({ error: error.message || '(App.js) Error searching for breweries' });
     }
 });
 
 
 // GET RANDOM BREWERY
 app.get('/breweries/random', async (req,res) => {
-    //res.send("This should be a random brewery");
-    const brewery = await getRandomBrewery();
-    res.json(brewery);
+    try {
+        const localRandom = await getRandomBreweryFromDb();
+        if (localRandom) {
+            res.set('X-Data-Source', 'database');
+            return res.json(localRandom);
+        }
+
+        const brewery = await getRandomBrewery();
+        await upsertBreweries([brewery]);
+        res.set('X-Data-Source', 'openbrewery');
+        return res.json(brewery);
+    }
+    catch (error) {
+        return res.status(500).json({ error: error.message || 'Error getting random brewery' });
+    }
 });
 
 
@@ -81,8 +109,16 @@ app.get('/breweries/:id', async (req,res) => {
     const id = req.params.id;
     
     try {
+        const localBrewery = await getBreweryByIdFromDb(id);
+        if (localBrewery) {
+            res.set('X-Data-Source', 'database');
+            return res.json(localBrewery);
+        }
+
         const brewery = await getBreweryById(id);
-        res.json(brewery);
+        await upsertBreweries([brewery]);
+        res.set('X-Data-Source', 'openbrewery');
+        return res.json(brewery);
     }
     catch (error) {
         res.status(500).json({ error: error.message });
@@ -97,8 +133,16 @@ app.get('/breweries', async (req,res) => {
     const perPage = parseInt(req.query.per_page) || 50;
 
     try {
+        const localBreweries = await getAllBreweriesFromDb(page, perPage);
+        if (localBreweries.length > 0) {
+            res.set('X-Data-Source', 'database');
+            return res.json(localBreweries);
+        }
+
         const breweries = await getAllBreweries(page, perPage);
-        res.json(breweries);
+        await upsertBreweries(breweries);
+        res.set('X-Data-Source', 'openbrewery');
+        return res.json(breweries);
     }
     catch (error) {
         res.status(500).json({ error: error.message });
@@ -109,7 +153,7 @@ app.get('/breweries', async (req,res) => {
 /////////////////////////////////////////////////
 //  END OF API ENDPOINTS  ///////////////////////
 /////////////////////////////////////////////////
-// START OF DATABASE ENDPOINTS  /////////////////
+// TODO: START OF DATABASE ENDPOINTS  /////////////////
 /////////////////////////////////////////////////
 
 
@@ -130,6 +174,17 @@ app.use((err, req, res, next) => {
 
 // Start the server
 // The command is "npm run dev" to start the server (because of nodemon)
-app.listen(process.env.PORT, () => {
-    console.log(`Server is running on port ${process.env.PORT}`);
-});
+async function startServer() {
+    try {
+        await ensureSchema();
+        app.listen(process.env.PORT, () => {
+            console.log(`Server is running on port ${process.env.PORT}`);
+        });
+    }
+    catch (error) {
+        console.error('Failed to initialize schema or start server:', error.message);
+        process.exit(1);
+    }
+}
+
+startServer();

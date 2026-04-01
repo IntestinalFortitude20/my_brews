@@ -2,20 +2,21 @@ CREATE DATABASE My_Breweries;
 USE My_Breweries;
 
 -- Create the Breweries table
-CREATE TABLE Breweries (
-    BreweryID VARCHAR(255) PRIMARY KEY, -- Use the ID from the API response
-    BreweryName VARCHAR(255) NOT NULL,
-    BreweryType VARCHAR(100) NOT NULL,
-    Address VARCHAR(255) NOT NULL,
-    City VARCHAR(100) NOT NULL,
-    State_Province VARCHAR(100) NOT NULL,
-    PostalCode VARCHAR(20) NOT NULL,
-    Country VARCHAR(100) NOT NULL,
-    Longitude DECIMAL(10, 7) NOT NULL, -- Use DECIMAL for precise coordinates
-    Latitude DECIMAL(10, 7) NOT NULL,
-    Phone VARCHAR(20),
-    Website_url VARCHAR(255),
-    
+CREATE TABLE breweries (
+    id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    brewery_type VARCHAR(100),
+    address VARCHAR(255),
+    city VARCHAR(100),
+    state VARCHAR(100),
+    postal_code VARCHAR(20),
+    country VARCHAR(100),
+    longitude VARCHAR(50),
+    latitude VARCHAR(50),
+    phone VARCHAR(20),
+    website VARCHAR(255),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create the BeersOnTap table
